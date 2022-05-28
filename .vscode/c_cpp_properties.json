@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${default}",
+                "C:/Tsung/Programming/Github/11020_itp1_final_project/allegro/include",
+                "C:/Tsung/Programming/Github/11020_itp1_final_project"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "C:/msys64/mingw64/bin/g++.exe",
+            "cStandard": "c11"
+        }
+    ],
+    "version": 4
+}
