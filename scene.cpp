@@ -5,7 +5,6 @@
 
 const int BLOCK_IN_ROW = HEIGHT / BLOCK_HEIGHT;
 const int BLOCK_IN_COL = WIDTH / BLOCK_WIDTH;
-ALLEGRO_FONT* font = NULL;
 ALLEGRO_BITMAP* scene1_img = NULL;
 
 // function of menu
@@ -27,6 +26,7 @@ void menu_destroy() {
 
 // function of game_scene
 void game_scene1_init() {
+    font = al_load_ttf_font("./font/源樣明體-超粗.ttc", 24, 0);
     // XXX: object init
     character_init();
     monster_init();
@@ -45,6 +45,7 @@ void game_scene1_draw() {
     bullets_draw();
     monster_draw();
     objects_draw();
+    bar_draw();
 }
 void game_scene1_destroy() {
     al_destroy_bitmap(scene1_img);

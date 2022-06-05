@@ -1,4 +1,9 @@
-#define MAX_BULLET_NUM 100
+#define MAX_BULLET_NUM 1000
+#define PI acos(-1)
+
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
 
 #include "charater.h"
 
@@ -8,17 +13,24 @@
 // 3: object init coor. must + width/height.
 ///////////////////////////////////////
 
+// teams
+enum { T_MONST, T_CHARA };
+ALLEGRO_MOUSE_STATE state;
+
 // the state of character
 enum { STOP = 0, MOVE, ATK };
-typedef enum direction { UP, DOWN, RIGHT, LEFT } Direction;
+typedef enum direction { UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3 } Direction;
 typedef struct character {
+    int hp;
+    int MAX_HP;
+    bool block;
     int x, y;             // the position of image
     int width, height;    // the width and height of image
     bool dir;             // left: false, right: true
     int face_dir;         // enum direction
     int state;            // the state of character
     bool under_atk_cd;    // under attack cool down
-    ALLEGRO_BITMAP* img_move[2];
+    ALLEGRO_BITMAP* img_move[12];
     ALLEGRO_BITMAP* img_atk[2];
     ALLEGRO_SAMPLE_INSTANCE* atk_Sound;
     int anime;         // counting the time of animation
@@ -28,10 +40,16 @@ typedef struct character {
 Character chara;
 ALLEGRO_SAMPLE* sample = NULL;
 void character_init() {
+    srand(time(NULL));
+    bar_init(1, WIDTH / 2 - 30, HEIGHT / 2 - 40, 60, 5);
+
+    chara.MAX_HP = 1000;
+    chara.hp = chara.MAX_HP;
+    chara.block = false;
     // load character images
-    for (int i = 1; i <= 2; i++) {
+    for (int i = 1; i <= 12; i++) {
         char temp[50];
-        sprintf(temp, "./image/char_move%d.png", i);
+        sprintf(temp, "./image/char_move_%d.png", i);
         chara.img_move[i - 1] = al_load_bitmap(temp);
     }
     for (int i = 1; i <= 2; i++) {
@@ -48,12 +66,12 @@ void character_init() {
     // initial the geometric information of character
     chara.width = al_get_bitmap_width(chara.img_move[0]);
     chara.height = al_get_bitmap_height(chara.img_move[0]);
-    chara.x = 50;
-    chara.y = 400;
+    chara.x = 750;
+    chara.y = 1400;
     chara.dir = true;
 
     // initial gaming info of character
-    chara.face_dir = RIGHT;
+    chara.face_dir = DOWN;
     chara.under_atk_cd = false;
 
     // initial the animation component
@@ -75,8 +93,10 @@ void character_process(ALLEGRO_EVENT event) {
     } else if (event.type == ALLEGRO_EVENT_KEY_UP) {
         key_state[event.keyboard.keycode] = false;
     }
+    al_get_mouse_state(&state);
 }
 void character_update() {
+    if (chara.block) return;
     // use the idea of finite state machine to deal with different state
     if (key_state[ALLEGRO_KEY_W]) {
         if (!chara_is_collide_object()) chara.y -= 5;
@@ -96,8 +116,6 @@ void character_update() {
         if (!chara_is_collide_object()) chara.x += 5;
         chara.face_dir = RIGHT;
         chara.state = MOVE;
-    } else if (key_state[ALLEGRO_KEY_SPACE]) {
-        chara.state = ATK;
     } else if (chara.anime == chara.anime_time - 1) {
         chara.anime = 0;
         chara.state = STOP;
@@ -107,6 +125,10 @@ void character_update() {
         chara.x = 500;
         chara.y = 500;
     }
+    if (state.buttons & 1) {    // mouse left button down
+        chara.state = ATK;
+        // printf("Mouse position: (%d, %d)\n", state.x, state.y);
+    }
 }
 void character_draw() {
     // printf("chara_x=%d chara_y=%d\n", chara.x, chara.y);
@@ -115,48 +137,25 @@ void character_draw() {
     int modified_y = (chara.y) + OBJECT_MODIFY_Y;
 
     if (chara.state == STOP) {
-        if (chara.dir) al_draw_bitmap(chara.img_move[0], modified_x, modified_y, ALLEGRO_FLIP_HORIZONTAL);
-        else al_draw_bitmap(chara.img_move[0], modified_x, modified_y, 0);
+        chara.block = false;
+        al_draw_bitmap(chara.img_move[3 * chara.face_dir], modified_x, modified_y, 0);
     } else if (chara.state == MOVE) {
-        if (chara.dir) {
-            if (chara.anime < chara.anime_time / 2) {
-                al_draw_bitmap(chara.img_move[0], modified_x, modified_y, ALLEGRO_FLIP_HORIZONTAL);
-            } else {
-                al_draw_bitmap(chara.img_move[1], modified_x, modified_y, ALLEGRO_FLIP_HORIZONTAL);
-            }
+        if (chara.anime < chara.anime_time / 2) {
+            al_draw_bitmap(chara.img_move[3 * chara.face_dir + 1], modified_x, modified_y, 0);
         } else {
-            if (chara.anime < chara.anime_time / 2) {
-                al_draw_bitmap(chara.img_move[0], modified_x, modified_y, 0);
-            } else {
-                al_draw_bitmap(chara.img_move[1], modified_x, modified_y, 0);
-            }
+            al_draw_bitmap(chara.img_move[3 * chara.face_dir + 2], modified_x, modified_y, 0);
         }
     } else if (chara.state == ATK) {
-        if (chara.dir) {
-            if (chara.anime < chara.anime_time / 2) {
-                chara.under_atk_cd = false;
-                al_draw_bitmap(chara.img_atk[0], modified_x, modified_y, ALLEGRO_FLIP_HORIZONTAL);
-            } else {
-                al_draw_bitmap(chara.img_atk[1], modified_x, modified_y, ALLEGRO_FLIP_HORIZONTAL);
-                al_play_sample_instance(chara.atk_Sound);
-                // 避免重複攻擊
-                if (!chara.under_atk_cd) {
-                    chara.under_atk_cd = true;
-                    bullet_init(5);
-                }
-            }
-        } else {
-            if (chara.anime < chara.anime_time / 2) {
-                chara.under_atk_cd = false;
-                al_draw_bitmap(chara.img_atk[0], modified_x, modified_y, 0);
-            } else {
-                al_draw_bitmap(chara.img_atk[1], modified_x, modified_y, 0);
-                al_play_sample_instance(chara.atk_Sound);
-                // 避免重複攻擊
-                if (!chara.under_atk_cd) {
-                    chara.under_atk_cd = true;
-                    bullet_init(5);
-                }
+        al_draw_bitmap(chara.img_move[3 * chara.face_dir], modified_x, modified_y, 0);
+        if (chara.anime >= chara.anime_time / 6) {
+            al_play_sample_instance(chara.atk_Sound);
+            if (chara.anime % 3 == 0) {
+                // chara.block = true;
+                double rand_dir_x = ((rand() % 2 == 0) ? -1 : 1) * ((double)rand() / (double)(RAND_MAX / 1)) + 0.01;
+                double rand_dir_y = ((rand() % 2 == 0) ? -1 : 1) * ((double)rand() / (double)(RAND_MAX / 1)) + 0.01;
+                // printf("shift dx=%f dy=%f\n", rand_dir_x, rand_dir_y);
+
+                bullet_init(T_CHARA, 10, rand_dir_x, rand_dir_y);
             }
         }
     }
@@ -169,11 +168,178 @@ void character_destory() {
     al_destroy_sample_instance(chara.atk_Sound);
 }
 
+
+// the state of monster
+enum { MONS_STOP, MONS_MOVE, MONS_ATTACK1, MONS_ATTACK2, MONS_ATTACK3 };
+typedef struct monster {
+    int hp;
+    int MAX_HP;
+    int x, y;                      // the position of image
+    int width, height;             // the width and height of image
+    float lock_dirx, lock_diry;    // lock the player(chara) direction
+    int state;                     // the state of character
+    bool under_atk_cd;             // under attack cool down
+    ALLEGRO_BITMAP* img_move[3];
+    ALLEGRO_SAMPLE_INSTANCE* atk_Sound;
+    ALLEGRO_SAMPLE_INSTANCE* paji_Sound;
+    int anime;             // counting the time of animation
+    int anime_time;        // indicate how long the animation
+    int time_for_state;    // counting the time for state
+} Monster;
+
+Monster monst;
+int delta_times = 0;
+ALLEGRO_SAMPLE* sample_atk = NULL;
+ALLEGRO_SAMPLE* sample_paji = NULL;
+void monster_init() {
+    bar_init(0, WIDTH / 6, HEIGHT / 12, (WIDTH / 3) * 2, 50);
+
+    monst.MAX_HP = 1000;
+    monst.hp = monst.MAX_HP;
+    monst.time_for_state = 0;
+    // load character images
+    for (int i = 1; i <= 3; i++) {
+        char temp[50];
+        sprintf(temp, "./image/fire_monster_%d.png", i);
+        monst.img_move[i - 1] = al_load_bitmap(temp);
+    }
+    // load effective sound
+    // atk sound
+    sample_atk = al_load_sample("./sound/monster_atk_sound.wav");
+    monst.atk_Sound = al_create_sample_instance(sample_atk);
+    al_set_sample_instance_playmode(monst.atk_Sound, ALLEGRO_PLAYMODE_ONCE);
+    al_attach_sample_instance_to_mixer(monst.atk_Sound, al_get_default_mixer());
+    // paji_sound
+    sample_paji = al_load_sample("./sound/monster_paji_sound.wav");
+    monst.paji_Sound = al_create_sample_instance(sample_paji);
+    al_set_sample_instance_playmode(monst.atk_Sound, ALLEGRO_PLAYMODE_ONCE);
+    al_attach_sample_instance_to_mixer(monst.atk_Sound, al_get_default_mixer());
+
+    // initial the geometric information of character
+    monst.width = al_get_bitmap_width(monst.img_move[0]);
+    monst.height = al_get_bitmap_height(monst.img_move[0]);
+    monst.x = 750;
+    monst.y = 750;
+
+    // initial gaming info of character
+    monst.lock_dirx = 0;    // TODO: change to float
+    monst.lock_diry = 0;    // TODO: change to float
+    monst.under_atk_cd = false;
+
+    // initial the animation component
+    monst.state = MONS_STOP;
+    monst.anime = 0;
+    monst.anime_time = 60;
+}
+void monster_process(ALLEGRO_EVENT event) {
+    // process the animation
+    if (event.type == ALLEGRO_EVENT_TIMER) {
+        if (event.timer.source == fps) {
+            monst.time_for_state++;
+            monst.anime++;
+            monst.anime %= monst.anime_time;
+        }
+    }
+}
+void generate_next_state() {
+    int min = 0;
+    int max = 5;
+    monst.state = rand() % (max - min + 1);
+    printf("STATE %d\n", monst.state);
+}
+void monster_update() {
+    // use the idea of finite state machine to deal with different state
+    if (monst.state == MONS_STOP) {
+        if (monst.time_for_state >= 60) {
+            generate_next_state();
+            // monst.state = MONS_MOVE;
+            monst.time_for_state = 0;
+        }
+    } else if (monst.state == MONS_MOVE || monst.state > 4) {
+        if (monst.time_for_state >= 140) {
+            generate_next_state();
+            // monst.state = MONS_ATTACK1;
+            monst.time_for_state = 0;
+        } else if (monst.time_for_state % 70 <= 30) {
+            // int distance = sqrt(pow(chara.x - monst.x, 2) + pow(chara.y - monst.y, 2));
+            int dx = (chara.x - monst.x) / 150;
+            int dy = (chara.y - monst.y) / 150;
+            if (!monst_is_collide_object_x(dx)) monst.x += dx;
+            if (!monst_is_collide_object_y(dy)) monst.y += dy;
+            // printf("dx=%d dy=%d\n", dx, dy);
+        }
+    } else if (monst.state == MONS_ATTACK1) {
+        if (monst.time_for_state >= 60) {
+            generate_next_state();
+            // monst.state = MONS_ATTACK2;
+            monst.time_for_state = 0;
+        }
+        if (monst.time_for_state % 15 == 0) {
+            double rand_dir_x = ((double)rand() / (double)(RAND_MAX / 0.05)) + 0.01;
+            double rand_dir_y = ((double)rand() / (double)(RAND_MAX / 0.05)) + 0.01;
+            double unit_angle = 0.3926990817;
+            double delta_angle = atan(((chara.y) - (monst.y)) / ((chara.x) - (monst.x))) + atan(rand_dir_y / rand_dir_x);
+            for (int i = 0; i < 16; i++) {
+                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
+                // printf("angles=%llf cos=%llf sin=%llf\n", unit_angle * i + delta_angle, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
+            }
+        }
+    } else if (monst.state == MONS_ATTACK2) {
+        if (monst.time_for_state >= 60) {
+            generate_next_state();
+            // monst.state = MONS_ATTACK3;
+            monst.time_for_state = 0;
+            delta_times = 0;
+        }
+        if (monst.time_for_state % 7 == 0) {
+            double unit_angle = PI / 2;
+            double delta_angle = (PI / 100) * delta_times;
+            for (int i = 0; i < 4; i++) {
+                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
+                delta_times++;
+            }
+        }
+    } else if (monst.state == MONS_ATTACK3) {
+        if (monst.time_for_state >= 60) {
+            generate_next_state();
+            // monst.state = MONS_STOP;
+            monst.time_for_state = 0;
+        }
+        if (monst.time_for_state % 7 == 0) {
+            double unit_angle = -PI / 2;
+            double delta_angle = (PI / 100) * delta_times;
+            for (int i = 0; i < 4; i++) {
+                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
+                delta_times++;
+            }
+        }
+    }
+}
+void monster_draw() {
+    int modified_x = monst.x + OBJECT_MODIFY_X;
+    int modified_y = monst.y + OBJECT_MODIFY_Y;
+    // with the state, draw corresponding image
+    if (monst.anime < monst.anime_time / 2) {
+        al_draw_bitmap(monst.img_move[0], modified_x, modified_y, 0);
+    } else {
+        al_draw_bitmap(monst.img_move[1], modified_x, modified_y, 0);
+    }
+}
+void monster_destory() {
+    al_destroy_bitmap(monst.img_move[0]);
+    al_destroy_bitmap(monst.img_move[1]);
+    al_destroy_bitmap(monst.img_move[2]);
+    al_destroy_sample_instance(monst.atk_Sound);
+    al_destroy_sample_instance(monst.paji_Sound);
+}
+
+
 // the state of bullet
 enum { FLY, INIT };
 typedef struct bullet {
+    int team;
     int x, y;
-    int fly_dir_x = 0, fly_dir_y = 0;
+    double fly_dir_x = 0, fly_dir_y = 0;
     int speed;
     int width, height;
     int state = INIT;
@@ -183,9 +349,16 @@ typedef struct bullet {
 Bullet bullets[MAX_BULLET_NUM + 1];
 int bullets_start_index = 0;
 int bullets_end_index = 0;
-void bullet_init(int speed) {
+void bullet_init(int team, int speed, float dx, float dy) {    // dx, dy 飄移多少
+    // printf("start=%d end=%d\n", bullets_start_index, bullets_end_index);
+    // set bullets team
+    bullets[bullets_end_index].team = team;
+
     // load bullet image
-    bullets[bullets_end_index].img = al_load_bitmap("./image/bullet.png");
+    char temp[50];
+    sprintf(temp, "./image/bullet_%d.png", team);
+    bullets[bullets_end_index].img = al_load_bitmap(temp);
+
 
     // initial the geometric information of bullet
     bullets[bullets_end_index].width = al_get_bitmap_width(bullets[bullets_end_index].img);
@@ -194,19 +367,27 @@ void bullet_init(int speed) {
     // initial the animation component
     bullets[bullets_end_index].state = FLY;
     bullets[bullets_end_index].speed = speed;
-    if (chara.face_dir == UP) {
-        bullets[bullets_end_index].fly_dir_y = -1;
-    } else if (chara.face_dir == DOWN) {
-        bullets[bullets_end_index].fly_dir_y = 1;
-    } else if (chara.face_dir == LEFT) {
-        bullets[bullets_end_index].fly_dir_x = -1;
-    } else if (chara.face_dir == RIGHT) {
-        bullets[bullets_end_index].fly_dir_x = 1;
+    if (bullets[bullets_end_index].team == T_CHARA) {
+        bullets[bullets_end_index].fly_dir_x = (state.x - WIDTH / 2);
+        bullets[bullets_end_index].fly_dir_y = (state.y - HEIGHT / 2) + dy * 100;
+    } else if (bullets[bullets_end_index].team == T_MONST) {
+        bullets[bullets_end_index].fly_dir_x = dx;
+        bullets[bullets_end_index].fly_dir_y = dy;
     }
 
+    double avg = sqrtf(powf(bullets[bullets_end_index].fly_dir_x, 2) + powf(bullets[bullets_end_index].fly_dir_y, 2));
+    if (fabs(avg) < 0.001) avg = 1;
+    bullets[bullets_end_index].fly_dir_x /= avg;
+    bullets[bullets_end_index].fly_dir_y /= avg;
+
     // initial the initial x, y
-    bullets[bullets_end_index].x = chara.x + chara.width / 2 - bullets[bullets_end_index].width / 2;
-    bullets[bullets_end_index].y = chara.y + chara.height / 2 - bullets[bullets_end_index].height / 2;
+    if (bullets[bullets_end_index].team == T_CHARA) {
+        bullets[bullets_end_index].x = chara.x + chara.width / 2 - bullets[bullets_end_index].width / 2;
+        bullets[bullets_end_index].y = chara.y + chara.height / 2 - bullets[bullets_end_index].height / 2;
+    } else if (bullets[bullets_end_index].team == T_MONST) {
+        bullets[bullets_end_index].x = monst.x + monst.width / 2 - bullets[bullets_end_index].width / 2;
+        bullets[bullets_end_index].y = monst.y + monst.height / 2 - bullets[bullets_end_index].height / 2;
+    }
 
     bullets_end_index = (bullets_end_index + 1) % MAX_BULLET_NUM;
 }
@@ -245,6 +426,18 @@ void bullets_update() {
                 Bullet reset_bullet;
                 bullets[i] = reset_bullet;
                 continue;
+            } else if (bullets[i].team == T_CHARA && bullet_is_collide_monster(i, bullets_dx, bullets_dy)) {
+                Bullet reset_bullet;
+                bullets[i] = reset_bullet;
+                monst.hp -= 4;
+                // printf("monst hp=%d\n", monst.hp);
+                continue;
+            } else if (bullets[i].team == T_MONST && bullet_is_collide_chara(i, bullets_dx, bullets_dy)) {
+                Bullet reset_bullet;
+                bullets[i] = reset_bullet;
+                chara.hp -= 4;
+                // printf("chara hp=%d\n", chara.hp);
+                continue;
             }
 
             bullets[i].x += bullets_dx;
@@ -268,95 +461,11 @@ void bullets_destory() {
     for (int i = 0; i < MAX_BULLET_NUM; i++) {
         if (bullets[i].state == FLY) {
             al_destroy_bitmap(bullets[i].img);
-            printf("%d\n", i);
+            printf("destory bullet: %d\n", i);
         }
     }
 }
 
-// the state of monster
-enum { MONS_STOP, MONS_MOVE, MONS_ATTACK1, MONS_ATTACK2, MONS_ATTACK3 };
-typedef struct monster {
-    int x, y;                      // the position of image
-    int width, height;             // the width and height of image
-    float lock_dirx, lock_diry;    // lock the player(chara) direction
-    int state;                     // the state of character
-    bool under_atk_cd;             // under attack cool down
-    ALLEGRO_BITMAP* img_move[3];
-    ALLEGRO_SAMPLE_INSTANCE* atk_Sound;
-    ALLEGRO_SAMPLE_INSTANCE* paji_Sound;
-    int anime;         // counting the time of animation
-    int anime_time;    // indicate how long the animation
-} Monster;
-
-Monster monst;
-ALLEGRO_SAMPLE* sample_atk = NULL;
-ALLEGRO_SAMPLE* sample_paji = NULL;
-void monster_init() {
-    // load character images
-    for (int i = 1; i <= 3; i++) {
-        char temp[50];
-        sprintf(temp, "./image/fire_monster_%d.png", i);
-        monst.img_move[i - 1] = al_load_bitmap(temp);
-    }
-    // load effective sound
-    // atk sound
-    sample_atk = al_load_sample("./sound/monster_atk_sound.wav");
-    monst.atk_Sound = al_create_sample_instance(sample_atk);
-    al_set_sample_instance_playmode(monst.atk_Sound, ALLEGRO_PLAYMODE_ONCE);
-    al_attach_sample_instance_to_mixer(monst.atk_Sound, al_get_default_mixer());
-    // paji_sound
-    sample_paji = al_load_sample("./sound/monster_paji_sound.wav");
-    monst.paji_Sound = al_create_sample_instance(sample_paji);
-    al_set_sample_instance_playmode(monst.atk_Sound, ALLEGRO_PLAYMODE_ONCE);
-    al_attach_sample_instance_to_mixer(monst.atk_Sound, al_get_default_mixer());
-
-    // initial the geometric information of character
-    monst.width = al_get_bitmap_width(monst.img_move[0]);
-    monst.height = al_get_bitmap_height(monst.img_move[0]);
-    monst.x = (WIDTH / 2) - monst.width;
-    monst.y = (HEIGHT / 2) - monst.height;
-
-    // initial gaming info of character
-    monst.lock_dirx = 0;    // TODO: change to float
-    monst.lock_diry = 0;    // TODO: change to float
-    monst.under_atk_cd = false;
-
-    // initial the animation component
-    monst.state = MONS_STOP;
-    monst.anime = 0;
-    monst.anime_time = 60;
-}
-void monster_process(ALLEGRO_EVENT event) {
-    // process the animation
-    if (event.type == ALLEGRO_EVENT_TIMER) {
-        if (event.timer.source == fps) {
-            monst.anime++;
-            monst.anime %= monst.anime_time;
-        }
-    }
-}
-void monster_update() {
-    // use the idea of finite state machine to deal with different state
-}
-void monster_draw() {
-    int modified_x = monst.x + OBJECT_MODIFY_X - (monst.width / 2);
-    int modified_y = monst.y + OBJECT_MODIFY_Y - (monst.height / 2);
-    // with the state, draw corresponding image
-    if (monst.state == STOP) {
-        if (monst.anime < monst.anime_time / 2) {
-            al_draw_bitmap(monst.img_move[0], modified_x, modified_y, 0);
-        } else {
-            al_draw_bitmap(monst.img_move[1], modified_x, modified_y, 0);
-        }
-    }
-}
-void monster_destory() {
-    al_destroy_bitmap(monst.img_move[0]);
-    al_destroy_bitmap(monst.img_move[1]);
-    al_destroy_bitmap(monst.img_move[2]);
-    al_destroy_sample_instance(monst.atk_Sound);
-    al_destroy_sample_instance(monst.paji_Sound);
-}
 
 int max(int a, int b) {
     return ((a > b) ? a : b);
@@ -369,8 +478,8 @@ void objects_draw() {
     int draw_start_x = chara.x / BLOCK_WIDTH;
     int draw_start_y = chara.y / BLOCK_HEIGHT;
 
-    for (int i = max(0, draw_start_y - (HEIGHT / BLOCK_HEIGHT) + 1), count_i = 0; (i < THIS_SCENE_SIZE_ROW) && (count_i < ((HEIGHT / BLOCK_HEIGHT) + 10)); i++, count_i++) {
-        for (int j = max(0, draw_start_x - (WIDTH / BLOCK_WIDTH) + 1), count_j = 0; (j < THIS_SCENE_SIZE_COL) && (count_j < ((WIDTH / BLOCK_WIDTH) + 10)); j++, count_j++) {
+    for (int i = max(0, draw_start_y - (HEIGHT / BLOCK_HEIGHT) + 1), count_i = 0; (i < THIS_SCENE_SIZE_ROW) && (count_i < ((HEIGHT / BLOCK_HEIGHT) + 20)); i++, count_i++) {
+        for (int j = max(0, draw_start_x - (WIDTH / BLOCK_WIDTH) + 1), count_j = 0; (j < THIS_SCENE_SIZE_COL) && (count_j < ((WIDTH / BLOCK_WIDTH) + 20)); j++, count_j++) {
             int modified_x = (j + 1) * BLOCK_WIDTH + OBJECT_MODIFY_X;
             int modified_y = (i + 1) * BLOCK_HEIGHT + OBJECT_MODIFY_Y;
 
@@ -418,6 +527,40 @@ bool chara_is_collide_object() {
         return true;
     } else return false;
 }
+bool monst_is_collide_object_x(int dx) {
+    // width 和 height 減掉一為了讓角色能夠通過剛好的縫隙
+    int lu_coor_x = monst.x, lu_coor_y = monst.y;                                         // 左上
+    int ru_coor_x = monst.x + monst.width - 1, ru_coor_y = monst.y;                       // 右上
+    int ld_coor_x = monst.x, ld_coor_y = monst.y + monst.height - 1;                      // 左下
+    int rd_coor_x = monst.x + monst.width - 1, rd_coor_y = monst.y + monst.height - 1;    // 右下
+
+    lu_coor_x += dx;
+    ru_coor_x += dx;
+    ld_coor_x += dx;
+    rd_coor_x += dx;
+
+    if ((THIS_SCENE_MAP[lu_coor_y / BLOCK_HEIGHT][lu_coor_x / BLOCK_WIDTH] == 3) || (THIS_SCENE_MAP[ru_coor_y / BLOCK_HEIGHT][ru_coor_x / BLOCK_WIDTH] == 3) ||
+        (THIS_SCENE_MAP[ld_coor_y / BLOCK_HEIGHT][ld_coor_x / BLOCK_WIDTH] == 3) || (THIS_SCENE_MAP[rd_coor_y / BLOCK_HEIGHT][rd_coor_x / BLOCK_WIDTH] == 3)) {
+        return true;
+    } else return false;
+}
+bool monst_is_collide_object_y(int dy) {
+    // width 和 height 減掉一為了讓角色能夠通過剛好的縫隙
+    int lu_coor_x = monst.x, lu_coor_y = monst.y;                                         // 左上
+    int ru_coor_x = monst.x + monst.width - 1, ru_coor_y = monst.y;                       // 右上
+    int ld_coor_x = monst.x, ld_coor_y = monst.y + monst.height - 1;                      // 左下
+    int rd_coor_x = monst.x + monst.width - 1, rd_coor_y = monst.y + monst.height - 1;    // 右下
+
+    lu_coor_y += dy;
+    ru_coor_y += dy;
+    ld_coor_y += dy;
+    rd_coor_y += dy;
+
+    if ((THIS_SCENE_MAP[lu_coor_y / BLOCK_HEIGHT][lu_coor_x / BLOCK_WIDTH] == 3) || (THIS_SCENE_MAP[ru_coor_y / BLOCK_HEIGHT][ru_coor_x / BLOCK_WIDTH] == 3) ||
+        (THIS_SCENE_MAP[ld_coor_y / BLOCK_HEIGHT][ld_coor_x / BLOCK_WIDTH] == 3) || (THIS_SCENE_MAP[rd_coor_y / BLOCK_HEIGHT][rd_coor_x / BLOCK_WIDTH] == 3)) {
+        return true;
+    } else return false;
+}
 bool bullet_is_collide_object(int i, int dx, int dy) {
     int lu_coor_x = dx + bullets[i].x, lu_coor_y = dy + bullets[i].y;                                           // 左上
     int ru_coor_x = dx + bullets[i].x + bullets[i].width, ru_coor_y = dy + bullets[i].y;                        // 右上
@@ -429,8 +572,68 @@ bool bullet_is_collide_object(int i, int dx, int dy) {
         return true;
     } else return false;
 }
+bool bullet_is_collide_chara(int i, int dx, int dy) {
+    int lu_coor_x = dx + bullets[i].x;                                                      // 左上
+    int ru_coor_x = dx + bullets[i].x + bullets[i].width, ru_coor_y = dy + bullets[i].y;    // 右上
+    int rd_coor_y = dy + bullets[i].y + bullets[i].height;                                  // 右下
+
+    if (ru_coor_x > chara.x && chara.x + chara.width > lu_coor_x && rd_coor_y > chara.y && chara.y + chara.height > ru_coor_y) {
+        return true;
+    } else return false;
+}
+bool bullet_is_collide_monster(int i, int dx, int dy) {
+    int lu_coor_x = dx + bullets[i].x;                                                      // 左上
+    int ru_coor_x = dx + bullets[i].x + bullets[i].width, ru_coor_y = dy + bullets[i].y;    // 右上
+    int rd_coor_y = dy + bullets[i].y + bullets[i].height;                                  // 右下
+
+    if (ru_coor_x > monst.x && monst.x + monst.width > lu_coor_x && rd_coor_y > monst.y && monst.y + monst.height > ru_coor_y) {
+        return true;
+    } else return false;
+}
 
 void camera_update() {
     OBJECT_MODIFY_X = (WIDTH / 2) - (chara.x) - (chara.width / 2);
     OBJECT_MODIFY_Y = (HEIGHT / 2) - (chara.y) - (chara.height / 2);
+}
+
+typedef struct bar {
+    int target;
+    int x, y;
+    int width, height;
+    float length;
+} Bar;
+
+Bar bars[10];
+int bar_max_id = 0;
+void bar_init(int target, int x, int y, int width, int height) {
+    bars[bar_max_id].target = target;    // target=0:monst target=1:chara
+    bars[bar_max_id].length = 0;
+    bars[bar_max_id].x = x;
+    bars[bar_max_id].y = y;
+    bars[bar_max_id].width = width;
+    bars[bar_max_id].height = height;
+
+    bar_max_id++;
+}
+void bar_update() {
+    for (int i = 0; i < bar_max_id; i++) {
+        if (bars[i].target == 0) {    // monst
+            bars[i].x = WIDTH / 6;
+            bars[i].y = HEIGHT / 12;
+            bars[i].width = (WIDTH / 3) * 2;
+            bars[i].length = bars[i].width * ((float)monst.hp / (float)monst.MAX_HP);
+        } else if (bars[i].target == 1) {    // chara
+            bars[i].x = WIDTH / 2 - 30;
+            bars[i].y = HEIGHT / 2 - 40;
+            bars[i].length = bars[i].width * ((float)chara.hp / (float)chara.MAX_HP);
+        }
+    }
+}
+void bar_draw() {
+    for (int i = 0; i < bar_max_id; i++) {
+        // printf("length=%f x=%d y=%d width=%d height=%d\n", bars[i].length, bars[i].x, bars[i].y, bars[i].width, bars[i].height);
+        al_draw_filled_rectangle(bars[i].x, bars[i].y, bars[i].x + bars[i].width, bars[i].y + bars[i].height, al_map_rgb(255, 255, 255));
+        al_draw_filled_rectangle(bars[i].x, bars[i].y, bars[i].x + bars[i].length, bars[i].y + bars[i].height, al_map_rgb(255, 0, 0));
+        if (bars[i].target == 0) al_draw_text(font, al_map_rgb(0, 0, 0), WIDTH / 2, bars[i].y + bars[i].height / 5, ALLEGRO_ALIGN_CENTER, "史萊姆王 Slime King");
+    }
 }

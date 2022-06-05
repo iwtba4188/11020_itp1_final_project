@@ -1,9 +1,8 @@
 #include "GameWindow.h"
 
 bool draw = false;
-int window = 1;
 
-const char* title = "Final Project 11xxx";
+const char* title = "守護家園";
 
 // ALLEGRO Variables
 ALLEGRO_DISPLAY* display = NULL;
@@ -32,6 +31,7 @@ void game_init() {
     al_install_audio();
     al_init_acodec_addon();
     // Create display
+    al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
     display = al_create_display(WIDTH, HEIGHT);
     // create event queue
     event_queue = al_create_event_queue();
@@ -75,23 +75,35 @@ void game_begin() {
 }
 void game_update() {
     if (judge_next_window) {
-        if (window == 1) {
+        if (now_scene == 1) {
             // not back menu anymore, therefore destroy it
             menu_destroy();
             // initialize next scene
             game_scene1_init();
             al_set_target_backbuffer(display);
 
-            judge_next_window = false;
-            window = 2;
+            now_scene = 2;
+        } else if (now_scene == 2) {
+            // TODO: initialize the ending
+        } else if (now_scene == 3) {
+            // TODO: go back to menu scene
         }
+        judge_next_window = false;
     }
-    if (window == 2) {
+    if (now_scene == 2) {
         // XXX: object updates
         character_update();
         camera_update();
         bullets_update();
         monster_update();
+        bar_update();
+    }
+}
+void window_size_process(ALLEGRO_EVENT event) {
+    if (event.type == ALLEGRO_EVENT_DISPLAY_RESIZE) {
+        al_acknowledge_resize(display);
+        WIDTH = al_get_display_width(display);
+        HEIGHT = al_get_display_height(display);
     }
 }
 int process_event() {
@@ -99,10 +111,11 @@ int process_event() {
     ALLEGRO_EVENT event;
     al_wait_for_event(event_queue, &event);
     // process the event of other component
-    if (window == 1) {
+    if (now_scene == 1) {
         menu_process(event);
-    } else if (window == 2) {
+    } else if (now_scene == 2) {
         // XXX: object process
+        window_size_process(event);
         character_process(event);
         monster_process(event);
     }
@@ -115,9 +128,9 @@ int process_event() {
     return 0;
 }
 void game_draw() {
-    if (window == 1) {
+    if (now_scene == 1) {
         menu_draw();
-    } else if (window == 2) {
+    } else if (now_scene == 2) {
         game_scene1_draw();
     }
     al_flip_display();

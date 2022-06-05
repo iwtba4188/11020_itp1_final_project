@@ -1,8 +1,10 @@
 #include "global.h"
 // variables for global usage
+ALLEGRO_FONT* font = NULL;
+int now_scene = 1;
 const float FPS = 60.0;
-const int WIDTH = 1600;
-const int HEIGHT = 900;
+int WIDTH = 1600;
+int HEIGHT = 900;
 ALLEGRO_EVENT_QUEUE* event_queue = NULL;
 ALLEGRO_TIMER* fps = NULL;
 bool key_state[ALLEGRO_KEY_MAX] = {false};
