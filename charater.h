@@ -6,7 +6,7 @@ void character_update();
 void character_draw();
 void character_destory();
 
-void bullet_init(int team, int speed, float dx, float dy);
+void bullet_init(int team, int speed, float dx, float dy, int obtain_action, int init_monst_state_dist);
 void bullets_update();
 void bullets_draw();
 void bullets_destory();
@@ -25,6 +25,7 @@ bool monst_is_collide_object_y(int dy);
 bool bullet_is_collide_object(int i, int dx, int dy);
 bool bullet_is_collide_chara(int i, int dx, int dy);
 bool bullet_is_collide_monster(int i, int dx, int dy);
+int monst_chara_dist();
 
 void camera_update();
 

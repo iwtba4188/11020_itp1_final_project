@@ -1,4 +1,4 @@
-#define MAX_BULLET_NUM 1000
+#define MAX_BULLET_NUM 10000
 #define PI acos(-1)
 
 #include <stdlib.h>
@@ -14,8 +14,75 @@
 ///////////////////////////////////////
 
 // teams
-enum { T_MONST, T_CHARA };
+enum { T_MONST, T_CHARA, T_STATE };
 ALLEGRO_MOUSE_STATE state;
+
+int max(int a, int b) {
+    return ((a > b) ? a : b);
+}
+int min(int a, int b) {
+    return ((a < b) ? a : b);
+}
+double max_arr(double arr[]) {
+    double max_ele = 0;
+    for (int i = 0; i < sizeof(arr) / sizeof(arr[0]); i++) {
+        max_ele = max(max_ele, arr[i]);
+    }
+    return max_ele;
+}
+typedef struct qlearning {
+    double learning_rate;
+    double discount_factor;
+    double epsilon;
+    double q_table[30][5];    // x_axis: distance, y_axis: actions
+
+    void learn(int state, int action, int reward, int next_state) {
+        double now_q = this->q_table[state][action];
+        double new_q = reward + this->discount_factor * max_arr(this->q_table[next_state]);
+        this->q_table[state][action] += this->learning_rate * (new_q - now_q);
+        printf("[learned] i=%d k=%d %llf\n", state, action, this->q_table[state][action]);
+    };
+    int get_action(int state) {
+        int action;
+        double random = ((double)rand() / (double)(RAND_MAX / 1));
+        if (random < this->epsilon) {
+            action = rand() % 5;
+            printf("#random# action=%d rand=%llf\n", action, random);
+        } else {
+            int index_has_max_ele[5];
+            int index_num_count = 0;
+            double max_val = 0;
+            for (int i = 0; i < 5; i++) {
+                if (this->q_table[state][i] > max_val) {
+                    max_val = this->q_table[state][i];
+                    index_has_max_ele[0] = i;
+                    index_num_count = 1;
+                } else if (this->q_table[state][i] == max_val) {
+                    index_has_max_ele[index_num_count] = i;
+                    index_num_count++;
+                }
+            }
+
+            return index_has_max_ele[rand() % index_num_count];
+        }
+
+        return action;
+    };
+} QL;
+
+QL agent;
+void agent_init() {
+    agent.learning_rate = 0.01;
+    agent.discount_factor = 0.9;
+    agent.epsilon = 0.1;
+    for (int i = 0; i < 30; i++) {
+        for (int k = 0; k < 5; k++) {
+            agent.q_table[i][k] = 0;
+            // printf("%d %d %d %llf\n", i, j, k, agent.q_table[i][j][k]);
+        }
+    }
+}
+
 
 // the state of character
 enum { STOP = 0, MOVE, ATK };
@@ -122,8 +189,26 @@ void character_update() {
     } else if (chara.anime == 0) {
         chara.state = STOP;
     } else if (key_state[ALLEGRO_KEY_R]) {
-        chara.x = 500;
-        chara.y = 500;
+        // chara.x = 500;
+        // chara.y = 500;
+        for (int i = 0; i < 30; i++) {
+            for (int k = 0; k < 5; k++) {
+                printf("%llf\n", agent.q_table[i][k]);
+            }
+            printf("\n");
+        }
+        al_stop_timer(fps);
+        int a;
+        scanf("%d", &a);
+        printf("\n\n");
+        al_resume_timer(fps);
+    }
+    if (key_state[ALLEGRO_KEY_P]) {
+        agent.epsilon = 1;
+        printf("Set epsilon to 1;\n");
+    } else if (key_state[ALLEGRO_KEY_O]) {
+        agent.epsilon = 0.1;
+        printf("Set epsilon to 0.1;\n");
     }
     if (state.buttons & 1) {    // mouse left button down
         chara.state = ATK;
@@ -155,7 +240,7 @@ void character_draw() {
                 double rand_dir_y = ((rand() % 2 == 0) ? -1 : 1) * ((double)rand() / (double)(RAND_MAX / 1)) + 0.01;
                 // printf("shift dx=%f dy=%f\n", rand_dir_x, rand_dir_y);
 
-                bullet_init(T_CHARA, 10, rand_dir_x, rand_dir_y);
+                bullet_init(T_CHARA, 10, rand_dir_x, rand_dir_y, -1, -1);
             }
         }
     }
@@ -192,6 +277,7 @@ int delta_times = 0;
 ALLEGRO_SAMPLE* sample_atk = NULL;
 ALLEGRO_SAMPLE* sample_paji = NULL;
 void monster_init() {
+    agent_init();
     bar_init(0, WIDTH / 6, HEIGHT / 12, (WIDTH / 3) * 2, 50);
 
     monst.MAX_HP = 1000;
@@ -242,10 +328,11 @@ void monster_process(ALLEGRO_EVENT event) {
     }
 }
 void generate_next_state() {
-    int min = 0;
-    int max = 5;
-    monst.state = rand() % (max - min + 1);
-    printf("STATE %d\n", monst.state);
+    // int min = 0;
+    // int max = 5;
+    // monst.state = rand() % (max - min + 1);
+    // printf("STATE %d\n", monst.state);
+    monst.state = agent.get_action(monst_chara_dist());
 }
 void monster_update() {
     // use the idea of finite state machine to deal with different state
@@ -254,6 +341,7 @@ void monster_update() {
             generate_next_state();
             // monst.state = MONS_MOVE;
             monst.time_for_state = 0;
+            bullet_init(T_STATE, 0, 0, 0, 0, monst_chara_dist());
         }
     } else if (monst.state == MONS_MOVE || monst.state > 4) {
         if (monst.time_for_state >= 140) {
@@ -267,6 +355,7 @@ void monster_update() {
             if (!monst_is_collide_object_x(dx)) monst.x += dx;
             if (!monst_is_collide_object_y(dy)) monst.y += dy;
             // printf("dx=%d dy=%d\n", dx, dy);
+            bullet_init(T_STATE, 0, 0, 0, 1, sqrt(pow(fabs(monst.x - chara.x), 2) + pow(fabs(monst.y - chara.y), 2)));
         }
     } else if (monst.state == MONS_ATTACK1) {
         if (monst.time_for_state >= 60) {
@@ -280,7 +369,7 @@ void monster_update() {
             double unit_angle = 0.3926990817;
             double delta_angle = atan(((chara.y) - (monst.y)) / ((chara.x) - (monst.x))) + atan(rand_dir_y / rand_dir_x);
             for (int i = 0; i < 16; i++) {
-                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
+                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle), 2, monst_chara_dist());
                 // printf("angles=%llf cos=%llf sin=%llf\n", unit_angle * i + delta_angle, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
             }
         }
@@ -295,7 +384,7 @@ void monster_update() {
             double unit_angle = PI / 2;
             double delta_angle = (PI / 100) * delta_times;
             for (int i = 0; i < 4; i++) {
-                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
+                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle), 3, monst_chara_dist());
                 delta_times++;
             }
         }
@@ -309,7 +398,7 @@ void monster_update() {
             double unit_angle = -PI / 2;
             double delta_angle = (PI / 100) * delta_times;
             for (int i = 0; i < 4; i++) {
-                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle));
+                bullet_init(T_MONST, 10, cos(unit_angle * i + delta_angle), sin(unit_angle * i + delta_angle), 4, monst_chara_dist());
                 delta_times++;
             }
         }
@@ -333,7 +422,6 @@ void monster_destory() {
     al_destroy_sample_instance(monst.paji_Sound);
 }
 
-
 // the state of bullet
 enum { FLY, INIT };
 typedef struct bullet {
@@ -344,51 +432,61 @@ typedef struct bullet {
     int width, height;
     int state = INIT;
     ALLEGRO_BITMAP* img;
+
+    // q learning
+    int obtain_action;
+    int init_monst_state_dist;
 } Bullet;
 
 Bullet bullets[MAX_BULLET_NUM + 1];
 int bullets_start_index = 0;
 int bullets_end_index = 0;
-void bullet_init(int team, int speed, float dx, float dy) {    // dx, dy 飄移多少
+void bullet_init(int team, int speed, float dx, float dy, int obtain_action, int init_monst_state_dist) {    // dx, dy 飄移多少
     // printf("start=%d end=%d\n", bullets_start_index, bullets_end_index);
     // set bullets team
     bullets[bullets_end_index].team = team;
 
-    // load bullet image
-    char temp[50];
-    sprintf(temp, "./image/bullet_%d.png", team);
-    bullets[bullets_end_index].img = al_load_bitmap(temp);
+    if (bullets[bullets_end_index].team != T_STATE) {
+        // load bullet image
+        char temp[50];
+        sprintf(temp, "./image/bullet_%d.png", team);
+        bullets[bullets_end_index].img = al_load_bitmap(temp);
 
 
-    // initial the geometric information of bullet
-    bullets[bullets_end_index].width = al_get_bitmap_width(bullets[bullets_end_index].img);
-    bullets[bullets_end_index].height = al_get_bitmap_height(bullets[bullets_end_index].img);
+        // initial the geometric information of bullet
+        bullets[bullets_end_index].width = al_get_bitmap_width(bullets[bullets_end_index].img);
+        bullets[bullets_end_index].height = al_get_bitmap_height(bullets[bullets_end_index].img);
 
-    // initial the animation component
-    bullets[bullets_end_index].state = FLY;
-    bullets[bullets_end_index].speed = speed;
-    if (bullets[bullets_end_index].team == T_CHARA) {
-        bullets[bullets_end_index].fly_dir_x = (state.x - WIDTH / 2);
-        bullets[bullets_end_index].fly_dir_y = (state.y - HEIGHT / 2) + dy * 100;
-    } else if (bullets[bullets_end_index].team == T_MONST) {
-        bullets[bullets_end_index].fly_dir_x = dx;
-        bullets[bullets_end_index].fly_dir_y = dy;
+        // initial the animation component
+        bullets[bullets_end_index].state = FLY;
+        bullets[bullets_end_index].speed = speed;
+        if (bullets[bullets_end_index].team == T_CHARA) {
+            bullets[bullets_end_index].fly_dir_x = (state.x - WIDTH / 2);
+            bullets[bullets_end_index].fly_dir_y = (state.y - HEIGHT / 2) + dy * 100;
+        } else if (bullets[bullets_end_index].team == T_MONST) {
+            bullets[bullets_end_index].fly_dir_x = dx;
+            bullets[bullets_end_index].fly_dir_y = dy;
+        }
+
+        double avg = sqrtf(powf(bullets[bullets_end_index].fly_dir_x, 2) + powf(bullets[bullets_end_index].fly_dir_y, 2));
+        if (fabs(avg) < 0.1) avg = 1;
+        bullets[bullets_end_index].fly_dir_x /= avg;
+        bullets[bullets_end_index].fly_dir_y /= avg;
+
+        // initial the initial x, y
+        if (bullets[bullets_end_index].team == T_CHARA) {
+            bullets[bullets_end_index].x = chara.x + chara.width / 2 - bullets[bullets_end_index].width / 2;
+            bullets[bullets_end_index].y = chara.y + chara.height / 2 - bullets[bullets_end_index].height / 2;
+        } else if (bullets[bullets_end_index].team == T_MONST) {
+            bullets[bullets_end_index].x = monst.x + monst.width / 2 - bullets[bullets_end_index].width / 2;
+            bullets[bullets_end_index].y = monst.y + monst.height / 2 - bullets[bullets_end_index].height / 2;
+        }
     }
 
-    double avg = sqrtf(powf(bullets[bullets_end_index].fly_dir_x, 2) + powf(bullets[bullets_end_index].fly_dir_y, 2));
-    if (fabs(avg) < 0.001) avg = 1;
-    bullets[bullets_end_index].fly_dir_x /= avg;
-    bullets[bullets_end_index].fly_dir_y /= avg;
-
-    // initial the initial x, y
-    if (bullets[bullets_end_index].team == T_CHARA) {
-        bullets[bullets_end_index].x = chara.x + chara.width / 2 - bullets[bullets_end_index].width / 2;
-        bullets[bullets_end_index].y = chara.y + chara.height / 2 - bullets[bullets_end_index].height / 2;
-    } else if (bullets[bullets_end_index].team == T_MONST) {
-        bullets[bullets_end_index].x = monst.x + monst.width / 2 - bullets[bullets_end_index].width / 2;
-        bullets[bullets_end_index].y = monst.y + monst.height / 2 - bullets[bullets_end_index].height / 2;
-    }
-
+    // q learning
+    bullets[bullets_end_index].obtain_action = obtain_action;
+    bullets[bullets_end_index].init_monst_state_dist = init_monst_state_dist;
+    /////////////
     bullets_end_index = (bullets_end_index + 1) % MAX_BULLET_NUM;
 }
 void bullets_update() {
@@ -397,7 +495,16 @@ void bullets_update() {
     // end debug
     // 調整bullets_start_index
     for (int i = bullets_start_index; i != bullets_end_index; i = (i + 1) % MAX_BULLET_NUM) {
-        if (bullets[i].state == INIT) {
+        if (bullets[i].team == T_STATE) {
+            if (agent.q_table[bullets[i].init_monst_state_dist][1] == max_arr(agent.q_table[bullets[i].init_monst_state_dist])) {
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, -3, bullets[i].init_monst_state_dist);
+            } else {
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, 3, bullets[i].init_monst_state_dist);
+            }
+            Bullet reset_bullet;
+            bullets[i] = reset_bullet;
+            // printf("chara hp=%d\n", chara.hp);
+        } else if (bullets[i].state == INIT) {
             bullets_start_index = (bullets_start_index + 1) % MAX_BULLET_NUM;
         } else {
             break;
@@ -409,6 +516,7 @@ void bullets_update() {
         if (bullets[i].state == INIT) {
             continue;
         } else if (bullets[i].state == FLY) {
+
             int bullets_dx = bullets[i].fly_dir_x * bullets[i].speed;
             int bullets_dy = bullets[i].fly_dir_y * bullets[i].speed;
             // 判斷bullet該不該消失
@@ -423,6 +531,7 @@ void bullets_update() {
                 bullets[i] = reset_bullet;
                 continue;
             } else if (bullet_is_collide_object(i, bullets_dx, bullets_dy)) {
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, -0.01, bullets[i + 1].init_monst_state_dist);
                 Bullet reset_bullet;
                 bullets[i] = reset_bullet;
                 continue;
@@ -433,6 +542,7 @@ void bullets_update() {
                 // printf("monst hp=%d\n", monst.hp);
                 continue;
             } else if (bullets[i].team == T_MONST && bullet_is_collide_chara(i, bullets_dx, bullets_dy)) {
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, 200, bullets[i + 1].init_monst_state_dist);
                 Bullet reset_bullet;
                 bullets[i] = reset_bullet;
                 chara.hp -= 4;
@@ -467,12 +577,6 @@ void bullets_destory() {
 }
 
 
-int max(int a, int b) {
-    return ((a > b) ? a : b);
-}
-int min(int a, int b) {
-    return ((a < b) ? a : b);
-}
 void objects_draw() {
     ALLEGRO_BITMAP* wall = al_load_bitmap("./image/3.png");
     int draw_start_x = chara.x / BLOCK_WIDTH;
@@ -590,6 +694,20 @@ bool bullet_is_collide_monster(int i, int dx, int dy) {
         return true;
     } else return false;
 }
+int monst_chara_dist() {
+    int monst_x = monst.x - monst.width / 2;
+    int monst_y = monst.y - monst.height / 2;
+    int chara_x = chara.x - chara.width / 2;
+    int chara_y = chara.y - chara.height / 2;
+
+    double dist = sqrt(pow(fabs(monst_x - chara_x), 2) + pow(fabs(monst_y - chara_y), 2));
+
+    if (dist / 30 < 30) {
+        return dist / 30;
+    } else {
+        return 29;
+    }
+}
 
 void camera_update() {
     OBJECT_MODIFY_X = (WIDTH / 2) - (chara.x) - (chara.width / 2);
@@ -636,4 +754,12 @@ void bar_draw() {
         al_draw_filled_rectangle(bars[i].x, bars[i].y, bars[i].x + bars[i].length, bars[i].y + bars[i].height, al_map_rgb(255, 0, 0));
         if (bars[i].target == 0) al_draw_text(font, al_map_rgb(0, 0, 0), WIDTH / 2, bars[i].y + bars[i].height / 5, ALLEGRO_ALIGN_CENTER, "史萊姆王 Slime King");
     }
+
+    int monst_x = monst.x - monst.width / 2;
+    int monst_y = monst.y - monst.height / 2;
+    int chara_x = chara.x - chara.width / 2;
+    int chara_y = chara.y - chara.height / 2;
+    char temp[50];
+    sprintf(temp, "%llf", sqrt(pow(fabs(monst_x - chara_x), 2) + pow(fabs(monst_y - chara_y), 2)));
+    al_draw_text(font, al_map_rgb(0, 0, 0), 0, 0, 0, temp);
 }

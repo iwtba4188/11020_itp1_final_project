@@ -1,11 +1,11 @@
 # depslib dependency file v1.0
-1654423885 source:c:\tsung\programming\github\11020_itp1_final_project\charater.cpp
+1654485566 source:c:\tsung\programming\github\11020_itp1_final_project\charater.cpp
 	<stdlib.h>
 	<math.h>
 	<time.h>
 	"charater.h"
 
-1654418042 c:\tsung\programming\github\11020_itp1_final_project\charater.h
+1654482851 c:\tsung\programming\github\11020_itp1_final_project\charater.h
 	"global.h"
 
 1654427436 c:\tsung\programming\github\11020_itp1_final_project\global.h
