@@ -14,6 +14,9 @@
 // 3: object init coor. must + width/height.
 ///////////////////////////////////////
 
+bool talkable = false;
+int passed_time = 0;
+
 // boss mode
 enum { RANDOM_MODE, QL_MODE };
 // teams
@@ -74,19 +77,36 @@ typedef struct qlearning {
 
         return action;
     };
+    void save_learning_res() {
+        FILE* file;
+        file = fopen("./q_learning_res.txt", "w");
+        for (int i = 0; i < 30; i++) {
+            for (int k = 0; k < 5; k++) {
+                fprintf(file, "%llf\n", this->q_table[i][k]);
+            }
+        }
+        fclose(file);
+        printf("[fin] saved q learning res.\n");
+    };
 } QL;
 
 QL agent;
 void agent_init() {
+    FILE* file;
+    file = fopen("./q_learning_res.txt", "r");
+
     agent.learning_rate = 0.01;
     agent.discount_factor = 0.9;
     agent.epsilon = 1;
     for (int i = 0; i < 30; i++) {
         for (int k = 0; k < 5; k++) {
-            agent.q_table[i][k] = 0;
+            fscanf(file, "%llf", &agent.q_table[i][k]);
+            // agent.q_table[i][k] = 0;
             // printf("%d %d %d %llf\n", i, j, k, agent.q_table[i][j][k]);
         }
     }
+
+    fclose(file);
 }
 
 
@@ -153,6 +173,12 @@ void character_init() {
     chara.anime_time = 30;
 }
 void character_process(ALLEGRO_EVENT event) {
+    // count time to save QL res.
+    passed_time++;
+    if (passed_time / 1000 > 0) {
+        agent.save_learning_res();
+        passed_time = 0;
+    }
     // process the animation
     if (event.type == ALLEGRO_EVENT_TIMER) {
         // chara anime
@@ -169,6 +195,7 @@ void character_process(ALLEGRO_EVENT event) {
             pause = true;
         } else if (event.keyboard.keycode == ALLEGRO_KEY_R) {
             if (winner != -1 || chat_count == -1) {
+                talkable = false;
                 if (winner == 444) {
                     chat_count = 11;
                 } else if (winner == 666) {
@@ -257,8 +284,8 @@ void character_draw() {
             // al_play_sample_instance(chara.atk_Sound);
             if (chara.anime % 3 == 0) {
                 // chara.block = true;
-                double rand_dir_x = ((rand() % 2 == 0) ? -1 : 1) * ((double)rand() / (double)(RAND_MAX + 0.001));
-                double rand_dir_y = ((rand() % 2 == 0) ? -1 : 1) * ((double)rand() / (double)(RAND_MAX + 0.001));
+                double rand_dir_x = ((double)rand() / (double)(RAND_MAX + 0.001));
+                double rand_dir_y = ((double)rand() / (double)(RAND_MAX + 0.001));
                 // printf("shift dx=%f dy=%f\n", rand_dir_x, rand_dir_y);
 
                 bullet_init(T_CHARA, 10, rand_dir_x, rand_dir_y, -1, -1);
@@ -312,12 +339,12 @@ void monster_init() {
     }
     // load effective sound
     // atk sound
-    sample_atk = al_load_sample("./sound/monster_atk_sound.wav");
+    // sample_atk = al_load_sample("./sound/monster_atk_sound.wav");
     monst.atk_Sound = al_create_sample_instance(sample_atk);
     al_set_sample_instance_playmode(monst.atk_Sound, ALLEGRO_PLAYMODE_ONCE);
     al_attach_sample_instance_to_mixer(monst.atk_Sound, al_get_default_mixer());
     // paji_sound
-    sample_paji = al_load_sample("./sound/monster_paji_sound.wav");
+    // sample_paji = al_load_sample("./sound/monster_paji_sound.wav");
     monst.paji_Sound = al_create_sample_instance(sample_paji);
     al_set_sample_instance_playmode(monst.atk_Sound, ALLEGRO_PLAYMODE_ONCE);
     al_attach_sample_instance_to_mixer(monst.atk_Sound, al_get_default_mixer());
@@ -359,7 +386,7 @@ void monster_update() {
     // printf("state=%d\n", monst.state);
     if (monst.state == MONS_BLOCK) return;
 
-    printf("#epsilon=%llf bossmode=%d\n", agent.epsilon, boss_mode);
+    // printf("#epsilon=%llf bossmode=%d\n", agent.epsilon, boss_mode);
 
     // use the idea of finite state machine to deal with different state
     if (monst.state == MONS_STOP) {
@@ -514,7 +541,7 @@ void bullet_init(int team, int speed, float dx, float dy, int obtain_action, int
         }
 
         double avg = sqrtf(powf(bullets[bullets_end_index].fly_dir_x, 2) + powf(bullets[bullets_end_index].fly_dir_y, 2));
-        if (fabs(avg) < 0.1) avg = 1;
+        if (fabs(avg) < 0.1) avg = 0.5;
         bullets[bullets_end_index].fly_dir_x /= avg;
         bullets[bullets_end_index].fly_dir_y /= avg;
 
@@ -623,9 +650,11 @@ void bullets_destory() {
     setting_scene_destory_chara();
 }
 
-
+ALLEGRO_BITMAP* wall;
+void objects_init() {
+    wall = al_load_bitmap("./image/3.png");
+}
 void objects_draw() {
-    ALLEGRO_BITMAP* wall = al_load_bitmap("./image/3.png");
     int draw_start_x = chara.x / BLOCK_WIDTH;
     int draw_start_y = chara.y / BLOCK_HEIGHT;
 
@@ -819,6 +848,7 @@ void bar_init(int target, int x, int y, int width, int height) {
     bar_max_id++;
 }
 void bar_update() {
+    // bar
     for (int i = 0; i < bar_max_id; i++) {
         if (bars[i].target == 0) {    // monst
             bars[i].x = WIDTH / 6;
@@ -844,9 +874,10 @@ void bar_draw() {
     int monst_y = monst.y - monst.height / 2;
     int chara_x = chara.x - chara.width / 2;
     int chara_y = chara.y - chara.height / 2;
-    char temp[50];
-    sprintf(temp, "%llf", sqrt(pow(fabs(monst_x - chara_x), 2) + pow(fabs(monst_y - chara_y), 2)));
-    al_draw_text(font, al_map_rgb(0, 0, 0), 0, 0, 0, temp);
+    // Draw the dist between chara and monst.
+    // char temp[50];
+    // sprintf(temp, "%llf", sqrt(pow(fabs(monst_x - chara_x), 2) + pow(fabs(monst_y - chara_y), 2)));
+    // al_draw_text(font, al_map_rgb(0, 0, 0), 0, 0, 0, temp);
 }
 
 ALLEGRO_BITMAP* conti[2];
@@ -1007,7 +1038,6 @@ void reset_positions(int chara_x, int chara_y, int monst_x, int monst_y) {
 }
 bool check_end() {
     if (monst.hp <= 0 || chara.hp <= 0) {
-        black_scene = true;
         return true;
     } else return false;
 }
@@ -1041,7 +1071,7 @@ void chat_process(ALLEGRO_EVENT event) {
             chat_count++;
         }
     }
-    printf("[fin] load chat.%d\n", chat_count);
+    // printf("[fin] load chat.%d\n", chat_count);
 }
 void chat_draw() {
     if (chat_count == 5 || chat_count == 11 || chat_count == 16) {
@@ -1064,4 +1094,41 @@ void chat_destory() {
 void next_part_of_chat() {
     chat_count++;
     in_chat = true;
+}
+
+ALLEGRO_BITMAP* R_sign = NULL;
+void sign_init() {
+    R_sign = al_load_bitmap("./image/R_btn.png");
+}
+void sign_draw() {
+    if (talkable == true) {
+        int chief_village_R_x = 710 + OBJECT_MODIFY_X, chief_village_R_y = 2200 + OBJECT_MODIFY_Y - 50;
+        int monst_R_x = monst.x + OBJECT_MODIFY_X + 70, monst_R_y = monst.y + OBJECT_MODIFY_Y - 70;
+        al_draw_bitmap(R_sign, chief_village_R_x, chief_village_R_y, 0);
+        al_draw_bitmap(R_sign, monst_R_x, monst_R_y, 0);
+    }
+}
+void sign_update() {
+    // check chat
+    if (winner != -1 || chat_count == -1) {
+        talkable = true;
+        // printf("a\n");
+    }
+}
+void sign_destroy() {
+    al_destroy_bitmap(R_sign);
+}
+
+ALLEGRO_FONT* black_scene_font = NULL;
+ALLEGRO_BITMAP* black_bkg;
+void black_scene_init() {
+    black_scene_font = al_load_ttf_font("./font/源樣明體-超粗.ttc", 32, 0);
+    black_bkg = al_load_bitmap("./image/black.png");
+}
+void black_scene_draw() {
+    al_draw_bitmap(black_bkg, 0, 0, 0);
+    al_draw_text(black_scene_font, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTER, "經過了一番纏鬥，你和史萊姆王終於分出了勝負......");
+}
+void black_scene_destory() {
+    al_destroy_bitmap(black_bkg);
 }

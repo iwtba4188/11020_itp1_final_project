@@ -113,6 +113,7 @@ void menu_destroy() {
     al_destroy_bitmap(exit_scene[1]);
 }
 
+int time_counting_scene = 0;
 // function of game_scene
 void game_scene1_init() {
     font = al_load_ttf_font("./font/源樣明體-超粗.ttc", 24, 0);
@@ -123,6 +124,9 @@ void game_scene1_init() {
     camera_update();
     chief_init();
     chat_init();
+    sign_init();
+    objects_init();
+    black_scene_init();
     // background = al_load_bitmap("./image/stage.jpg");
     create_scene_map_img("./map/scene1.txt", "./map/scene1.jpg");
     scene1_img = al_load_bitmap("./map/scene1.jpg");
@@ -131,9 +135,6 @@ void game_scene1_draw() {
     // printf("x%d y%d\n", OBJECT_MODIFY_X, OBJECT_MODIFY_Y);
     // scanf("%d", OBJECT_MODIFY_X);
 
-    if (check_end()) {
-        after_end();
-    }
 
     if (winner == -1) {
         al_clear_to_color(al_map_rgb(255, 255, 255));
@@ -147,11 +148,21 @@ void game_scene1_draw() {
     monster_draw();
     objects_draw();
     chief_of_village_draw();
+    sign_draw();
 
     if (show_bar) bar_draw();
     if (pause) pause_draw();
     if (in_chat) chat_draw();
 
+    if (check_end() && winner == -1) {
+        time_counting_scene++;
+        after_end();
+    }
+    if (time_counting_scene / 200 == 0 && time_counting_scene != 0) {
+        printf("time=%d\n", time_counting_scene);
+        black_scene_draw();
+        time_counting_scene++;
+    }
     // if (check_end()) {
     //     printf("===============\n");
     //     black_scene = true;
@@ -172,6 +183,8 @@ void game_scene1_destroy() {
     bullets_destory();
     monster_destory();
     chat_destory();
+    sign_destroy();
+    black_scene_destory();
 }
 
 // boss mode
@@ -270,14 +283,13 @@ void exit_fighting_scene_process(ALLEGRO_EVENT event) {
             last_scene = EXIT_PAGE;
             judge_next_window = true;
 
-            title_red = true;
+            if (winner == 666) title_red = true;
 
             in_chat = false;
             in_setting = false;
             pause = false;
             terminate = false;
             show_bar = false;
-            black_scene = false;
             winner = -1;
             chat_count = -1;
         }

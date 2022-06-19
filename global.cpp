@@ -9,7 +9,6 @@ bool terminate = false;
 int last_scene = -1;
 int aaa_scene = -1;
 bool show_bar = false;
-bool black_scene = false;
 ALLEGRO_FONT* font = NULL;
 int now_scene = 0;
 int winner = -1;

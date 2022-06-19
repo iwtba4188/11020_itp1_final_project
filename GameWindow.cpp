@@ -102,6 +102,7 @@ void game_update() {
             bullets_update();
             monster_update();
             bar_update();
+            sign_update();
         } else {
             pause_update();
         }

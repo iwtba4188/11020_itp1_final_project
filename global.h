@@ -25,7 +25,6 @@ extern bool terminate;
 extern int last_scene;
 extern int aaa_scene;
 extern bool show_bar;
-extern bool black_scene;
 extern ALLEGRO_FONT* font;
 extern int now_scene;
 extern const float FPS;

@@ -21,6 +21,7 @@ void monst_go();
 void chief_init();
 void chief_of_village_draw();
 
+void objects_init();
 void objects_draw();
 
 bool chara_is_collide_object();
@@ -58,3 +59,12 @@ void chat_process(ALLEGRO_EVENT event);
 void chat_draw();
 void chat_destory();
 void next_part_of_chat();
+
+void sign_init();
+void sign_draw();
+void sign_update();
+void sign_destroy();
+
+void black_scene_init();
+void black_scene_draw();
+void black_scene_destory();
