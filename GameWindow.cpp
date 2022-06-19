@@ -1,6 +1,8 @@
 #include "GameWindow.h"
+#include <windows.h>
 
 bool draw = false;
+enum { MENU, FIGHT, SETTING, ABOUT, EXIT, EXIT_PLAYER, EXIT_BOSS, TITLE_RED };
 
 const char* title = "守護家園";
 
@@ -53,13 +55,13 @@ void game_init() {
     fps = al_create_timer(1.0 / FPS);
     al_register_event_source(event_queue, al_get_timer_event_source(fps));
     // initialize the icon on the display
-    ALLEGRO_BITMAP* icon = al_load_bitmap("./image/icon.jpg");
+    ALLEGRO_BITMAP* icon = al_load_bitmap("./image/icon.png");
     al_set_display_icon(display, icon);
 }
 
 void game_begin() {
     // Load sound
-    song = al_load_sample("./sound/hello.wav");
+    song = al_load_sample("./sound/hello.mp3");
     al_reserve_samples(20);
     sample_instance = al_create_sample_instance(song);
     // Loop the song until the display closes
@@ -72,31 +74,35 @@ void game_begin() {
     al_start_timer(fps);
     // initialize the menu before entering the loop
     menu_init();
+    now_scene = MENU;
 }
 void game_update() {
     if (judge_next_window) {
-        if (now_scene == 1) {
+        if (aaa_scene == MENU) {
             // not back menu anymore, therefore destroy it
-            menu_destroy();
-            // initialize next scene
+            menu_init();
+        } else if (aaa_scene == FIGHT) {
             game_scene1_init();
-            al_set_target_backbuffer(display);
-
-            now_scene = 2;
-        } else if (now_scene == 2) {
-            // TODO: initialize the ending
-        } else if (now_scene == 3) {
-            // TODO: go back to menu scene
+        } else if (aaa_scene == SETTING) {
+            setting_scene_init();
+        } else if (aaa_scene == ABOUT) {
+            about_scene_init();
         }
+        now_scene = aaa_scene;
+        al_set_target_backbuffer(display);
         judge_next_window = false;
     }
-    if (now_scene == 2) {
+    if (now_scene == FIGHT) {
         // XXX: object updates
-        character_update();
-        camera_update();
-        bullets_update();
-        monster_update();
-        bar_update();
+        if (!pause) {
+            character_update();
+            camera_update();
+            bullets_update();
+            monster_update();
+            bar_update();
+        } else {
+            pause_update();
+        }
     }
 }
 void window_size_process(ALLEGRO_EVENT event) {
@@ -111,27 +117,44 @@ int process_event() {
     ALLEGRO_EVENT event;
     al_wait_for_event(event_queue, &event);
     // process the event of other component
-    if (now_scene == 1) {
+    window_size_process(event);
+    if (now_scene == MENU) {
         menu_process(event);
-    } else if (now_scene == 2) {
+    } else if (now_scene == FIGHT) {
         // XXX: object process
-        window_size_process(event);
-        character_process(event);
-        monster_process(event);
+        if (!pause) {
+            if (!in_chat) {
+                character_process(event);
+                monster_process(event);
+            } else {
+                chat_process(event);
+            }
+        } else {
+            pause_process(event);
+        }
+    } else if (now_scene == SETTING) {
+        setting_scene_process(event);
+    } else if (now_scene == ABOUT) {
+        about_scene_process(event);
     }
 
     // Shutdown our program
-    if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE) return GAME_TERMINATE;
+    if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE || terminate == true) return GAME_TERMINATE;
     else if (event.type == ALLEGRO_EVENT_TIMER)
         if (event.timer.source == fps) draw = true;
     if (draw) game_update();
     return 0;
 }
 void game_draw() {
-    if (now_scene == 1) {
+    if (now_scene == MENU) {
         menu_draw();
-    } else if (now_scene == 2) {
-        game_scene1_draw();
+    } else if (now_scene == FIGHT) {
+        if (!pause) game_scene1_draw();
+        else pause_draw();
+    } else if (now_scene == SETTING) {
+        setting_scene_draw();
+    } else if (now_scene == ABOUT) {
+        about_scene_draw();
     }
     al_flip_display();
 }
@@ -152,4 +175,7 @@ void game_destroy() {
     al_destroy_event_queue(event_queue);
     al_destroy_display(display);
     game_scene1_destroy();
+    setting_scene_destory();
+    about_scene_destroy();
+    menu_destroy();
 }

@@ -14,6 +14,18 @@
 #include <allegro5/allegro_ttf.h>
 
 // note that you can't assign initial value here!
+extern int boss_mode;
+
+extern bool in_chat;
+extern int chat_count;
+extern char chat[500][500];
+extern bool in_setting;
+extern bool pause;
+extern bool terminate;
+extern int last_scene;
+extern int aaa_scene;
+extern bool show_bar;
+extern bool black_scene;
 extern ALLEGRO_FONT* font;
 extern int now_scene;
 extern const float FPS;
@@ -30,4 +42,5 @@ extern int THIS_SCENE_SIZE_COL;
 extern int THIS_SCENE_MAP[MAX_SCENE_SIZE_ROW][MAX_SCENE_SIZE_COL];
 extern int OBJECT_MODIFY_X;
 extern int OBJECT_MODIFY_Y;
+extern int winner;
 #endif

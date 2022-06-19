@@ -10,4 +10,14 @@ void game_scene1_init();
 void game_scene1_draw();
 void game_scene1_destroy();
 
+void setting_scene_init();
+void setting_scene_process(ALLEGRO_EVENT event);
+void setting_scene_draw();
+void setting_scene_destory();
+
+void about_scene_init();
+void about_scene_process(ALLEGRO_EVENT event);
+void about_scene_draw();
+void about_scene_destroy();
+
 void create_scene_map_img(char* map_file_name, char* save_img_name);

@@ -1,14 +1,15 @@
 # depslib dependency file v1.0
-1654485566 source:c:\tsung\programming\github\11020_itp1_final_project\charater.cpp
+1655644699 source:c:\tsung\programming\github\11020_itp1_final_project\charater.cpp
 	<stdlib.h>
 	<math.h>
 	<time.h>
+	<windows.h>
 	"charater.h"
 
-1654482851 c:\tsung\programming\github\11020_itp1_final_project\charater.h
+1655644117 c:\tsung\programming\github\11020_itp1_final_project\charater.h
 	"global.h"
 
-1654427436 c:\tsung\programming\github\11020_itp1_final_project\global.h
+1655640451 c:\tsung\programming\github\11020_itp1_final_project\global.h
 	<stdio.h>
 	<allegro5/allegro.h>
 	<allegro5/allegro_primitives.h>
@@ -319,27 +320,29 @@
 	"allegro5/allegro.h"
 	"allegro5/allegro_font.h"
 
-1654427176 source:c:\tsung\programming\github\11020_itp1_final_project\gamewindow.cpp
+1655642589 source:c:\tsung\programming\github\11020_itp1_final_project\gamewindow.cpp
 	"GameWindow.h"
+	<windows.h>
 
 1654427113 c:\tsung\programming\github\11020_itp1_final_project\gamewindow.h
 	"global.h"
 	"charater.h"
 	"scene.h"
 
-1654422966 c:\tsung\programming\github\11020_itp1_final_project\scene.h
+1655574694 c:\tsung\programming\github\11020_itp1_final_project\scene.h
 	"global.h"
 	"charater.h"
 
-1654421578 source:c:\tsung\programming\github\11020_itp1_final_project\global.cpp
+1655644763 source:c:\tsung\programming\github\11020_itp1_final_project\global.cpp
 	"global.h"
 
 1653033781 source:c:\tsung\programming\github\11020_itp1_final_project\main.cpp
 	"GameWindow.h"
 
-1654422963 source:c:\tsung\programming\github\11020_itp1_final_project\scene.cpp
+1655641954 source:c:\tsung\programming\github\11020_itp1_final_project\scene.cpp
 	<stdlib.h>
 	<string.h>
+	<windows.h>
 	"scene.h"
 
 1653719560 c:\tsung\programming\github\11020_itp1_final_project\monster.h
