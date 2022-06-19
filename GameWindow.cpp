@@ -2,7 +2,7 @@
 #include <windows.h>
 
 bool draw = false;
-enum { MENU, FIGHT, SETTING, ABOUT, EXIT, EXIT_PLAYER, EXIT_BOSS, TITLE_RED };
+enum { MENU, FIGHT, SETTING, ABOUT, EXIT, EXIT_PAGE };
 
 const char* title = "守護家園";
 
@@ -87,6 +87,8 @@ void game_update() {
             setting_scene_init();
         } else if (aaa_scene == ABOUT) {
             about_scene_init();
+        } else if (aaa_scene == EXIT_PAGE) {
+            exit_fighting_scene_init();
         }
         now_scene = aaa_scene;
         al_set_target_backbuffer(display);
@@ -136,6 +138,8 @@ int process_event() {
         setting_scene_process(event);
     } else if (now_scene == ABOUT) {
         about_scene_process(event);
+    } else if (now_scene == EXIT_PAGE) {
+        exit_fighting_scene_process(event);
     }
 
     // Shutdown our program
@@ -155,6 +159,8 @@ void game_draw() {
         setting_scene_draw();
     } else if (now_scene == ABOUT) {
         about_scene_draw();
+    } else if (now_scene == EXIT_PAGE) {
+        exit_fighting_scene_draw();
     }
     al_flip_display();
 }

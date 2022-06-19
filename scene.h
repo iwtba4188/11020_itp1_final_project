@@ -20,4 +20,9 @@ void about_scene_process(ALLEGRO_EVENT event);
 void about_scene_draw();
 void about_scene_destroy();
 
+void exit_fighting_scene_init();
+void exit_fighting_scene_process(ALLEGRO_EVENT event);
+void exit_fighting_scene_draw();
+void exit_fighting_scene_destory();
+
 void create_scene_map_img(char* map_file_name, char* save_img_name);

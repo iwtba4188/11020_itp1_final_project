@@ -116,7 +116,7 @@ void character_init() {
     srand(time(NULL));
     bar_init(1, WIDTH / 2 - 30, HEIGHT / 2 - 40, 60, 5);
 
-    chara.MAX_HP = 1000;
+    chara.MAX_HP = 100;
     chara.hp = chara.MAX_HP;
     chara.block = false;
     // load character images
@@ -167,8 +167,15 @@ void character_process(ALLEGRO_EVENT event) {
     } else if (event.type == ALLEGRO_EVENT_KEY_UP) {
         if (event.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
             pause = true;
-        } else if (event.keyboard.keycode == ALLEGRO_KEY_M) {
-            next_part_of_chat();
+        } else if (event.keyboard.keycode == ALLEGRO_KEY_R) {
+            if (winner != -1 || chat_count == -1) {
+                if (winner == 444) {
+                    chat_count = 11;
+                } else if (winner == 666) {
+                    chat_count = 5;
+                }
+                next_part_of_chat();
+            }
         }
         key_state[event.keyboard.keycode] = false;
     }
@@ -206,22 +213,24 @@ void character_update() {
         chara.state = STOP;
     } else if (chara.anime == 0) {
         chara.state = STOP;
-    } else if (key_state[ALLEGRO_KEY_R]) {
-        // chara.x = 500;
-        // chara.y = 500;
-        for (int i = 0; i < 30; i++) {
-            for (int k = 0; k < 5; k++) {
-                printf("%llf\n", agent.q_table[i][k]);
-            }
-            printf("\n");
-        }
-        al_stop_timer(fps);
-        Sleep(2000);
-        // int a;
-        // scanf("%d", &a);
-        // printf("\n\n");
-        al_resume_timer(fps);
     }
+
+    // else if (key_state[ALLEGRO_KEY_R]) {
+    //     // chara.x = 500;
+    //     // chara.y = 500;
+    //     for (int i = 0; i < 30; i++) {
+    //         for (int k = 0; k < 5; k++) {
+    //             printf("%llf\n", agent.q_table[i][k]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     al_stop_timer(fps);
+    //     Sleep(2000);
+    //     // int a;
+    //     // scanf("%d", &a);
+    //     // printf("\n\n");
+    //     al_resume_timer(fps);
+    // }
     if (mouse_state.buttons & 1) {    // mouse left button down
         chara.state = ATK;
         // printf("Mouse position: (%d, %d)\n", state.x, state.y);
@@ -633,6 +642,7 @@ void objects_draw() {
 }
 
 bool chara_is_collide_portal() {
+    if (chat_count <= 3) return false;
     // width 和 height 減掉一為了讓角色能夠通過剛好的縫隙
     int lu_coor_x = chara.x, lu_coor_y = chara.y;                                         // 左上
     int ru_coor_x = chara.x + chara.width - 1, ru_coor_y = chara.y;                       // 右上
@@ -844,7 +854,7 @@ ALLEGRO_BITMAP* setting_[2];
 ALLEGRO_BITMAP* exit_chara[2];
 int now_on_ = -1;
 enum { CONTI };
-enum { MENU, FIGHT, SETTING, ABOUT, EXIT, EXIT_PLAYER, EXIT_BOSS };
+enum { MENU, FIGHT, SETTING, ABOUT, EXIT, EXIT_PAGE };
 void pause_init() {
     conti[0] = al_load_bitmap("./image/conti_0.png");
     conti[1] = al_load_bitmap("./image/conti_1.png");
@@ -1027,21 +1037,26 @@ void chat_init() {
 }
 void chat_process(ALLEGRO_EVENT event) {
     if (event.type == ALLEGRO_EVENT_KEY_UP) {
-        if (event.keyboard.keycode == ALLEGRO_KEY_K) {
+        if (event.keyboard.keycode == ALLEGRO_KEY_SPACE) {
             chat_count++;
         }
     }
     printf("[fin] load chat.%d\n", chat_count);
 }
 void chat_draw() {
-    if (chat_count == 3) {
+    if (chat_count == 5 || chat_count == 11 || chat_count == 16) {
         in_chat = false;
         chat_count++;
+        if (chat_count == 12 || chat_count == 17) {
+            aaa_scene = EXIT_PAGE;
+            last_scene = FIGHT;
+            judge_next_window = true;
+        }
         return;
     }
     int chat_x = WIDTH / 2 - al_get_bitmap_width(chat_img) / 2, chat_y = HEIGHT - al_get_bitmap_height(chat_img) / 2 - 160;    // y: 80
     al_draw_bitmap(chat_img, chat_x, chat_y, 0);
-    al_draw_multiline_text(font, al_map_rgb(255, 255, 255), chat_x + 50, chat_y + 30, al_get_bitmap_width(chat_img) / 2, 40, 0, chat[chat_count]);
+    al_draw_multiline_text(font, al_map_rgb(255, 255, 255), chat_x + 50, chat_y + 30, al_get_bitmap_width(chat_img) / 2, 0, 0, chat[chat_count]);
 }
 void chat_destory() {
     al_destroy_bitmap(chat_img);

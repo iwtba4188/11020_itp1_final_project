@@ -4,7 +4,7 @@
 
 #include "scene.h"
 
-enum { MENU, FIGHT, SETTING, ABOUT, EXIT, EXIT_PLAYER, EXIT_BOSS, TITLE_RED };
+enum { MENU, FIGHT, SETTING, ABOUT, EXIT, EXIT_PAGE, TITLE_RED };
 
 const int BLOCK_IN_ROW = HEIGHT / BLOCK_HEIGHT;
 const int BLOCK_IN_COL = WIDTH / BLOCK_WIDTH;
@@ -61,8 +61,8 @@ void menu_draw() {
 
     const int IMAGE_HEIGHT = al_get_bitmap_height(start_game[0]);
 
-    int title_x = 50, title_y = HEIGHT / 2 - 50;
-    int start_x = WIDTH / 2, start_y = HEIGHT / 5;
+    int title_x = WIDTH / 4 - al_get_bitmap_width(title_[0]) / 2, title_y = HEIGHT / 2 - al_get_bitmap_height(title_[0]) / 2;
+    int start_x = WIDTH / 2, start_y = HEIGHT / 4;
     int setting_x = WIDTH / 2, setting_y = start_y + IMAGE_HEIGHT + 30;
     int about_x = WIDTH / 2, about_y = setting_y + IMAGE_HEIGHT + 30;
     int exit_x = WIDTH / 2, exit_y = about_y + IMAGE_HEIGHT + 30;
@@ -254,6 +254,46 @@ void about_scene_draw() {
 }
 void about_scene_destroy() {
     al_destroy_bitmap(about_page);
+}
+
+
+ALLEGRO_BITMAP* congrate;
+ALLEGRO_BITMAP* game_over;
+void exit_fighting_scene_init() {
+    congrate = al_load_bitmap("./image/congrates.png");
+    game_over = al_load_bitmap("./image/game_over.png");
+}
+void exit_fighting_scene_process(ALLEGRO_EVENT event) {
+    if (event.type == ALLEGRO_EVENT_KEY_UP) {
+        if (event.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
+            aaa_scene = MENU;
+            last_scene = EXIT_PAGE;
+            judge_next_window = true;
+
+            title_red = true;
+
+            in_chat = false;
+            in_setting = false;
+            pause = false;
+            terminate = false;
+            show_bar = false;
+            black_scene = false;
+            winner = -1;
+            chat_count = -1;
+        }
+    }
+}
+void exit_fighting_scene_draw() {
+    al_draw_bitmap(background, 0, 0, 0);
+    if (winner == 666) {
+        al_draw_bitmap(congrate, WIDTH / 2 - al_get_bitmap_width(congrate) / 2, HEIGHT / 2 - al_get_bitmap_height(congrate) / 2, 0);
+    } else if (winner == 444) {
+        al_draw_bitmap(game_over, WIDTH / 2 - al_get_bitmap_width(game_over) / 2, HEIGHT / 2 - al_get_bitmap_height(game_over) / 2, 0);
+    }
+}
+void exit_fighting_scene_destory() {
+    al_destroy_bitmap(congrate);
+    al_destroy_bitmap(game_over);
 }
 
 // my scene utilities
