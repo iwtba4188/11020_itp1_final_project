@@ -1,5 +1,6 @@
 #define MAX_BULLET_NUM 10000
 #define PI acos(-1)
+#define LL long long
 
 #include <stdlib.h>
 #include <math.h>
@@ -29,8 +30,8 @@ int max(int a, int b) {
 int min(int a, int b) {
     return ((a < b) ? a : b);
 }
-double max_arr(double arr[]) {
-    double max_ele = 0;
+LL max_arr(LL arr[]) {
+    LL max_ele = 0;
     for (int i = 0; i < sizeof(arr) / sizeof(arr[0]); i++) {
         max_ele = max(max_ele, arr[i]);
     }
@@ -40,12 +41,12 @@ typedef struct qlearning {
     double learning_rate;
     double discount_factor;
     double epsilon;
-    double q_table[30][5];    // x_axis: distance, y_axis: actions
+    LL q_table[30][5];    // x_axis: distance, y_axis: actions
 
     void learn(int state, int action, int reward, int next_state) {
-        double now_q = this->q_table[state][action];
-        double new_q = reward + this->discount_factor * max_arr(this->q_table[next_state]);
-        this->q_table[state][action] += this->learning_rate * (new_q - now_q);
+        int now_q = this->q_table[state][action];
+        int new_q = reward + this->discount_factor * max_arr(this->q_table[next_state]);
+        this->q_table[state][action] += this->learning_rate * (int)(new_q - now_q);
         // printf("[learned] i=%d k=%d %llf\n", state, action, this->q_table[state][action]);
     };
     int get_action(int state) {
@@ -53,14 +54,14 @@ typedef struct qlearning {
         else if (boss_mode == QL_MODE) this->epsilon = 0.2;
 
         int action;
-        double random = ((double)rand() / (double)(RAND_MAX + 0.01));
+        int random = ((double)rand() / (double)(RAND_MAX));
         if (random < this->epsilon) {
             action = rand() % 5;
             printf("#random# action=%d rand=%llf\n", action, random);
         } else {
             int index_has_max_ele[5];
             int index_num_count = 0;
-            double max_val = 0;
+            int max_val = 0;
             for (int i = 0; i < 5; i++) {
                 if (this->q_table[state][i] > max_val) {
                     max_val = this->q_table[state][i];
@@ -82,7 +83,8 @@ typedef struct qlearning {
         file = fopen("./q_learning_res.txt", "w");
         for (int i = 0; i < 30; i++) {
             for (int k = 0; k < 5; k++) {
-                fprintf(file, "%llf\n", this->q_table[i][k]);
+                fprintf(file, "%lld\n", this->q_table[i][k]);
+                printf("%lld\n", this->q_table[i][k]);
             }
         }
         fclose(file);
@@ -100,7 +102,7 @@ void agent_init() {
     agent.epsilon = 1;
     for (int i = 0; i < 30; i++) {
         for (int k = 0; k < 5; k++) {
-            fscanf(file, "%llf", &agent.q_table[i][k]);
+            fscanf(file, "%lld", &agent.q_table[i][k]);
             // agent.q_table[i][k] = 0;
             // printf("%d %d %d %llf\n", i, j, k, agent.q_table[i][j][k]);
         }
@@ -569,9 +571,9 @@ void bullets_update() {
     for (int i = bullets_start_index; i != bullets_end_index; i = (i + 1) % MAX_BULLET_NUM) {
         if (bullets[i].team == T_STATE) {
             if (agent.q_table[bullets[i].init_monst_state_dist][1] == max_arr(agent.q_table[bullets[i].init_monst_state_dist])) {
-                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, -3, bullets[i].init_monst_state_dist);
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, -300, bullets[i].init_monst_state_dist);
             } else {
-                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, 3, bullets[i].init_monst_state_dist);
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, 300, bullets[i].init_monst_state_dist);
             }
             Bullet reset_bullet;
             bullets[i] = reset_bullet;
@@ -603,7 +605,7 @@ void bullets_update() {
                 bullets[i] = reset_bullet;
                 continue;
             } else if (bullet_is_collide_object(i, bullets_dx, bullets_dy)) {
-                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, -0.01, bullets[i + 1].init_monst_state_dist);
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, -1, bullets[i + 1].init_monst_state_dist);
                 Bullet reset_bullet;
                 bullets[i] = reset_bullet;
                 continue;
@@ -614,7 +616,7 @@ void bullets_update() {
                 // printf("monst hp=%d\n", monst.hp);
                 continue;
             } else if (bullets[i].team == T_MONST && bullet_is_collide_chara(i, bullets_dx, bullets_dy)) {
-                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, 200, bullets[i + 1].init_monst_state_dist);
+                agent.learn(bullets[i].init_monst_state_dist, bullets[i].obtain_action, 500, bullets[i + 1].init_monst_state_dist);
                 Bullet reset_bullet;
                 bullets[i] = reset_bullet;
                 chara.hp -= 4;

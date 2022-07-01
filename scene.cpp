@@ -137,7 +137,7 @@ void game_scene1_draw() {
 
 
     if (winner == -1) {
-        al_clear_to_color(al_map_rgb(255, 255, 255));
+        al_clear_to_color(al_map_rgb(90, 90, 90));
     } else {
         al_clear_to_color(al_map_rgb(0, 0, 0));
     }
@@ -285,6 +285,7 @@ void exit_fighting_scene_process(ALLEGRO_EVENT event) {
 
             if (winner == 666) title_red = true;
 
+            time_counting_scene = 0;
             in_chat = false;
             in_setting = false;
             pause = false;

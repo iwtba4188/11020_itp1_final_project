@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1655657175 source:c:\tsung\programming\github\11020_itp1_final_project\charater.cpp
+1655694447 source:c:\tsung\programming\github\11020_itp1_final_project\charater.cpp
 	<stdlib.h>
 	<math.h>
 	<time.h>
@@ -333,13 +333,13 @@
 	"global.h"
 	"charater.h"
 
-1655656460 source:c:\tsung\programming\github\11020_itp1_final_project\global.cpp
+1655692682 source:c:\tsung\programming\github\11020_itp1_final_project\global.cpp
 	"global.h"
 
 1653033781 source:c:\tsung\programming\github\11020_itp1_final_project\main.cpp
 	"GameWindow.h"
 
-1655656483 source:c:\tsung\programming\github\11020_itp1_final_project\scene.cpp
+1655694354 source:c:\tsung\programming\github\11020_itp1_final_project\scene.cpp
 	<stdlib.h>
 	<string.h>
 	<windows.h>
